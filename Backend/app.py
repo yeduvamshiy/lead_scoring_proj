@@ -18,7 +18,7 @@ Compress(app)  # Enable compression
 logging.basicConfig(level=logging.DEBUG)
 
 # Instantiate the OpenAI client
-api_key = os.getenv('OPENAI_API_KEY', 'sk-proj-AcrRJhLeM9l0DBll5oNtT3BlbkFJxvmv6go6dPAypF46sOtY')  # Replace with your API key if needed
+api_key = os.getenv('OPENAI_API_KEY', 'add your api key')  # Replace with your API key if needed
 client = OpenAI(api_key=api_key)
 
 # Define core designations and their corresponding scores
