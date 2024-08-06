@@ -1,9 +1,9 @@
 import pandas as pd
 
 # Load the CSV files from the 'data' folder using raw strings
-ICP1 = pd.read_csv(r'C:\Users\Devrev\Documents\lead_scoring_proj\Backend\data\icp1.csv')['Company name '].tolist()
-ICP2 = pd.read_csv(r'C:\Users\Devrev\Documents\lead_scoring_proj\Backend\data\icp2.csv')['Company name '].tolist()
-blacklisted_companies = pd.read_csv(r'C:\Users\Devrev\Documents\lead_scoring_proj\Backend\data\blacklisted.csv')['Company name'].tolist()
+ICP1 = pd.read_csv('Add path to ICP1 sheet')['Company name '].tolist()
+ICP2 = pd.read_csv('Add path to ICP2 sheet')['Company name '].tolist()
+blacklisted_companies = pd.read_csv('Add path to Blacklist companies sheet')['Company name'].tolist()
 
 employee_count_scores_ICP1 = {range(50, 201): 1, range(200, 501): 1.2, range(500, 100001): 1.5}
 employee_count_scores_ICP2 = {range(50, 201): 0.5, range(200, 501): 0.6, range(500, 100001): 0.75}
