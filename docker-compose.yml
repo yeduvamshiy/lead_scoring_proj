@@ -1,0 +1,20 @@
+version: '3.7'
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./Backend:/app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+  frontend:
+    build:
+      context: ./lead-scoring-frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./lead-scoring-frontend:/app
+    ports:
+      - "3000:3000"
