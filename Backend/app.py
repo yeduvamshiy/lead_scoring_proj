@@ -3,12 +3,11 @@ from flask import Flask, request, send_file, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_compress import Compress
 import pandas as pd
-from openai import OpenAI
 import io
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import time
-from openai import APIConnectionError, RateLimitError, APIError, BadRequestError
+from sentence_transformers import SentenceTransformer, util
 
 app = Flask(__name__, static_folder='../lead-scoring-frontend/build', static_url_path='/')
 CORS(app)  # Enable CORS for all routes
@@ -17,9 +16,8 @@ Compress(app)  # Enable compression
 # Enable logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Instantiate the OpenAI client
-api_key = os.getenv('OPENAI_API_KEY', 'add your api key')  # Replace with your API key if needed
-client = OpenAI(api_key=api_key)
+# Load SBERT model
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Lightweight and fast model
 
 # Define core designations and their corresponding scores
 core_designations = {
@@ -49,10 +47,10 @@ core_to_detailed = {
     "Vice Presidents of Support or Customer Success": ["VP of Support", "VP of Customer Success"],
     "Other Vice Presidents": ["Vice President of Sales", "VP of Sales", "Vice President of Marketing",
                               "VP of Marketing", "Vice President of Operations", "VP of Operations"],
-    "Directors of Support or Customer Success": ["Director of Support", "Director of Customer Success"],
+    "Directors of Support or Customer Success": ["Director of Support", "Director of Customer Success", "Head of Support", "Director CS"],
     "Other Directors": ["Director of Sales", "Sales Director", "Director of Marketing",
-                        "Marketing Director", "Director of Operations", "Operations Director"],
-    "Managers of Support or Customer Success": ["Support Manager", "Customer Success Manager"],
+                        "Marketing Director", "Director of Operations", "Operations Director", "Associate Director"], 
+    "Managers of Support or Customer Success": ["Support Manager", "Customer Success Manager", "CSM"],
     "Other Managers": ["Manager of Sales", "Sales Manager", "Manager of Marketing", "Marketing Manager",
                        "Manager of Operations", "Operations Manager"],
     "Sales Roles": ["Sales Representative", "Sales Executive", "Sales Associate", "Sales Consultant", "Other Sales Roles"],
@@ -71,6 +69,9 @@ core_to_detailed = {
 roles_scores = {detail: core_designations[core] for core, details in core_to_detailed.items() for detail in details}
 roles_scores.update(core_designations)
 
+# Pre-compute embeddings for all possible roles to speed up processing
+roles_embeddings = {role: model.encode(role, convert_to_tensor=True) for role in roles_scores.keys()}
+
 ICP1 = []
 ICP2 = []
 blacklisted_companies = []
@@ -81,24 +82,19 @@ employee_count_scores = {
 
 engagement_scores = {"yes": 1.0, "no": 0.0}
 
-# Function to get the most similar designation using GPT-4
+# Function to get the most similar designation using SBERT
 def get_similar_designation(designation):
     try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Classify job titles into predefined categories."},
-                {"role": "user", "content": f"Classify the following job title into one of these categories: {list(roles_scores.keys())}.\n\nJob title: {designation}"}
-            ],
-            max_tokens=10
-        )
-        most_similar_designation = response.choices[0].message['content'].strip()
-        return most_similar_designation if most_similar_designation in roles_scores else "Other Roles"
-    except RateLimitError:
-        time.sleep(1)
-        return get_similar_designation(designation)
-    except APIError as e:
-        logging.error(f"Error in GPT-4 API: {str(e)}")
+        # Encode the input designation
+        designation_embedding = model.encode(designation, convert_to_tensor=True)
+        
+        # Find the most similar role using cosine similarity
+        similarities = {role: util.pytorch_cos_sim(designation_embedding, roles_embeddings[role]).item() for role in roles_scores.keys()}
+        most_similar_designation = max(similarities, key=similarities.get)
+        
+        return most_similar_designation if similarities[most_similar_designation] > 0.5 else "Other Roles"
+    except Exception as e:
+        logging.error(f"Error in SBERT processing: {str(e)}")
         return "Other Roles"
 
 # Function to process a single row
@@ -120,15 +116,23 @@ def process_row(row):
     elif company in ICP2:
         icp_key = 'ICP2'
     else:
-        return {'Company': company, 'Designation': designation, 'Engagement': engagement, 'Score': 0}
+        icp_key = None  # Set icp_key to None if the company is not in ICP1 or ICP2
+        employee_score = 0  # Set employee_score to 0 if the company is not in ICP1 or ICP2
 
-    employee_score = 0
-    for range_key, weight in employee_count_scores[icp_key].items():
-        if employee_count in range_key:
-            employee_score = weight
-            break
-    
-    final_score = designation_score + employee_score + engagement_score
+    if icp_key:
+        employee_score = 0
+        for range_key, weight in employee_count_scores[icp_key].items():
+            if employee_count in range_key:
+                employee_score = weight
+                break
+
+    # Calculate the final score, including the ICP score
+    final_score = designation_score + engagement_score
+
+    # Add the employee score only if the company is in ICP1 or ICP2
+    if icp_key:
+        final_score += employee_score
+
     return {'Company': company, 'Designation': designation, 'Engagement': engagement, 'Score': final_score}
 
 # Endpoint to update weights
@@ -225,3 +229,4 @@ def serve_react_app(path):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
