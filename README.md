@@ -17,12 +17,14 @@ This project provides a lead scoring system that allows users to upload a CSV fi
 
 The Lead Scoring Project aims to simplify the process of scoring leads based on various parameters such as designations, employee count, and engagement. The system is built with a Flask backend and a React frontend, providing an interactive interface for users to manage and score their leads.
 
+This system leverages Sentence-BERT (SBERT), a state-of-the-art model for semantic similarity, to classify designations into predefined categories. This allows for a more accurate and efficient lead scoring process.
+
 ## Features
 
-* Upload CSV files containing lead data
-* Adjust weights for different designations and factors
-* Download the scored CSV file
-* Easy setup with Docker
+**Advanced Designation Classification**: Utilizes SBERT to accurately classify job titles into predefined categories.
+**Customizable Scoring**: Adjust weights for different designations, employee count, and engagement levels.
+**CSV Upload and Download**: Easily upload your leads in CSV format and download the scored results.
+**Docker Support**: Simplified deployment with Docker.
 
 ## Installation
 
@@ -46,14 +48,6 @@ source venv/bin/activate  # On Windows use venv\Scripts\activate
 
 ```bash
 pip install -r requirements.txt
-```
-
-4. **Set up environment variables:**
-
-   Create a `.env` file in the root directory and add your OpenAI API key:
-
-```
-OPENAI_API_KEY=your_openai_api_key
 ```
 
 ### Frontend Setup
