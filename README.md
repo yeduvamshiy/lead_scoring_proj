@@ -22,8 +22,11 @@ This system leverages Sentence-BERT (SBERT), a state-of-the-art model for semant
 ## Features
 
 **Advanced Designation Classification**: Utilizes SBERT to accurately classify job titles into predefined categories.
+
 **Customizable Scoring**: Adjust weights for different designations, employee count, and engagement levels.
+
 **CSV Upload and Download**: Easily upload your leads in CSV format and download the scored results.
+
 **Docker Support**: Simplified deployment with Docker.
 
 ## Installation
